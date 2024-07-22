@@ -5,6 +5,8 @@
 #SBATCH -o run.out
 #SBATCH -e run.err
 export OMP_NUN_THREADS=160
+export OMP_PROC_BIND=true
+export OMP_PLACES=threads
 
 # module load libs/kml
 
