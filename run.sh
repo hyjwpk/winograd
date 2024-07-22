@@ -6,4 +6,6 @@
 #SBATCH -e run.err
 export OMP_NUN_THREADS=160
 
+# module load libs/kml
+
 ./winograd small.conf 0

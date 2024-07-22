@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+// #include <kblas.h>
 
 const float G[4][3] = {
     {1.0, 0.0, 0.0}, {0.5, 0.5, 0.5}, {0.5, -0.5, 0.5}, {0.0, 0.0, 1.0}};
@@ -29,6 +30,7 @@ void sgemm(const float *A, const float *B, float *out, const int M, const int K,
     for (int j = 0; j < N; ++j)
        for (int k = 0; k < K; ++k)
           out[i * N + j]  += A[i * K + k] * B[k * N + j];
+  // cblas_sgemm(CblasColMajor,CblasNoTrans,CblasNoTrans, N, M, K, 1, B, N, A, K, 0, out, N); 
 }
 
 void sgemm_parallel(const float *A, const float *B, float *out, const int M, const int K,
@@ -43,6 +45,7 @@ for (int k = 0; k < K; ++k)
     for (int j = 0; j < N; ++j) {
           out[(long)i * N + j]  += A[i * K + k] * B[k * N + j];
     }
+  // cblas_sgemm(CblasColMajor,CblasNoTrans,CblasNoTrans, N, M, K, 1, B, N, A, K, 0, out, N); 
 }
 // User API for winograd F(2,3)
 // image: [batch * C * inHeight * inWidth]
@@ -64,7 +67,7 @@ void winconv_2x3(float *__restrict__ image, const int inHeight,
   float tmp_u[12];  // 4 * 3
   float u[16];      // 4 * 4;
   // U[:, :, k, c] = G * filters[k, c, :, :] * G.T()
-#pragma omp parallel for private(tmp_u, u)
+#pragma omp parallel for collapse(2) private(tmp_u, u)
   for (int k = 0; k < K; ++k) {
     for (int c = 0; c < C; ++c) {
       float *filters_ptr = filter + (k * C + c) * sizeF;
@@ -114,7 +117,7 @@ void winconv_2x3(float *__restrict__ image, const int inHeight,
   float mm[16];       // 4 * 4
   float tmp_m[8];     // 2 * 4
   float temp_out[4];  // 2 * 2
-// #pragma omp parallel for collapse(2) private(mm, temp_out, tmp_m)
+#pragma omp parallel for collapse(2) private(mm, temp_out, tmp_m)
   for (int n = 0; n < N; ++n)
     for (int k = 0; k < K; ++k) {
       for (int y = 0; y < outHeight / 2; ++y) {
