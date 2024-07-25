@@ -7,11 +7,18 @@ const float G[4][3] = {{1.0, 0.0, 0.0}, {0.5, 0.5, 0.5}, {0.5, -0.5, 0.5}, {0.0,
 
 void sgemm_parallel(const float *A, const float *B, float *out, const int M, const int K, const int N) {
     memset(out, 0, M * N * sizeof(float));
-#pragma omp parallel for
-    for (int i = 0; i < M; ++i) {
-        for (int k = 0; k < K; ++k) {
-            for (int j = 0; j < N; ++j) {
-                out[i * N + j] += A[i * K + k] * B[k * N + j];
+    int s = 32;
+#pragma omp parallel for collapse(2)
+    for (int ih = 0; ih < M; ih += s) {
+        for (int jh = 0; jh < N; jh += s) {
+            for (int kh = 0; kh < K; kh += s) {
+                for (int i = 0; i < s && ih + i < M; i++) {
+                    for (int k = 0; k < s && kh + k < K; k++) {
+                        for (int j = 0; j < s && jh + j < N; j++) {
+                            out[(ih + i) * N + jh + j] += A[(ih + i) * K + kh + k] * B[(kh + k) * N + jh + j];
+                        }
+                    }
+                }
             }
         }
     }
