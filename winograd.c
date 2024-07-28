@@ -36,7 +36,7 @@ void sgemm_parallel(const float *A, const float *B, float *out, const int M, con
                 for (int i = 0; i < s && ih + i < M; i++) {
                     for (int k = 0; k < s && kh + k < K; k++) {
                         for (int j = 0; j < s && jh + j < N; j++) {
-                            out[(ih + i) * N + jh + j] += A[(ih + i) * K + kh + k] * B[(kh + k) * N + jh + j];
+                            out[(long)(ih + i) * N + jh + j] += A[(long)(ih + i) * K + kh + k] * B[(long)(kh + k) * N + jh + j];
                         }
                     }
                 }
@@ -56,10 +56,10 @@ void winconv_2x3(float *__restrict__ image, const int inHeight,
     // m = 2; r = 3; alpha = 4
     const int outHeight = inHeight - 2;
     const int outWidth = inWidth - 2;
-    const int sizeI = inHeight * inWidth;
+    const long sizeI = inHeight * inWidth;
     const int sizeF = 3 * 3;
     const int sizeO = outHeight * outWidth;
-    const int P = outHeight / 2 * outWidth / 2 * N;
+    const long P = outHeight / 2 * outWidth / 2 * N;
 
     // U[:, :, k, c] = G * filters[k, c, :, :] * G.T()
     float tmp_u[12]; // 4 * 3
@@ -99,7 +99,7 @@ void winconv_2x3(float *__restrict__ image, const int inHeight,
                     int b = ((n * outHeight / 2) + y) * outWidth / 2 + x;
                     for (int xi = 0; xi < 4; ++xi) {
                         for (int nu = 0; nu < 4; ++nu) {
-                            V[((xi * 4 + nu) * C + c) * P + b] = v[xi * 4 + nu];
+                            V[((long)(xi * 4 + nu) * C + c) * P + b] = v[xi * 4 + nu];
                         }
                     }
                 }
@@ -110,9 +110,9 @@ void winconv_2x3(float *__restrict__ image, const int inHeight,
     // M[xi, nu, :, :] = U[xi, nu, :, :] * V[xi, nu, :, :]
     for (int xi = 0; xi < 4; ++xi) {
         for (int nu = 0; nu < 4; ++nu) {
-            float *M_ptr = M + (xi * 4 + nu) * K * P;
-            float *U_ptr = U + (xi * 4 + nu) * K * C;
-            float *V_ptr = V + (xi * 4 + nu) * C * P;
+            float *M_ptr = M + (long)(xi * 4 + nu) * K * P;
+            float *U_ptr = U + (long)(xi * 4 + nu) * K * C;
+            float *V_ptr = V + (long)(xi * 4 + nu) * C * P;
             sgemm_parallel(U_ptr, V_ptr, M_ptr, K, C, P);
         }
     }
@@ -124,8 +124,8 @@ void winconv_2x3(float *__restrict__ image, const int inHeight,
             float *mm = (float *)malloc(outHeight / 2 * outWidth / 2 * 16 * sizeof(float));
             float *tmp_m = (float *)malloc(outHeight / 2 * outWidth / 2 * 8 * sizeof(float));
             float *temp_out = (float *)malloc(outHeight / 2 * outWidth / 2 * 4 * sizeof(float));
-            for (int xi = 0; xi < 4; ++xi) {
-                for (int nu = 0; nu < 4; ++nu) {
+            for (long xi = 0; xi < 4; ++xi) {
+                for (long nu = 0; nu < 4; ++nu) {
                     for (int y = 0; y < outHeight / 2; ++y) {
                         for (int x = 0; x < outWidth / 2; ++x) {
                             int b = (n * outHeight / 2 + y) * outWidth / 2 + x;
@@ -140,7 +140,7 @@ void winconv_2x3(float *__restrict__ image, const int inHeight,
                     sgemm(&tmp_m[(y * outWidth / 2 + x) * 8], &A[0][0], &temp_out[(y * outWidth / 2 + x) * 4], 2, 4, 2);
                     for (int i = 0; i < 2; ++i) {
                         for (int j = 0; j < 2; ++j) {
-                            out[((n * K + k) * outHeight + y * 2 + i) * outWidth + x * 2 +
+                            out[((long)(n * K + k) * outHeight + y * 2 + i) * outWidth + x * 2 +
                                 j] = temp_out[(y * outWidth / 2 + x) * 4 + i * 2 + j];
                         }
                     }

@@ -11,4 +11,4 @@ export OMP_PLACES=threads
 
 # module load libs/kml
 
-./winograd small.conf 0
+./winograd final.conf 0
