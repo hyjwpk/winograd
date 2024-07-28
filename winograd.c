@@ -121,37 +121,30 @@ void winconv_2x3(float *__restrict__ image, const int inHeight,
     }
 
     // Y = A_T * m * A
-#pragma omp parallel for collapse(2)
+    float mm[16];      // 4 * 4
+    float tmp_m[8];    // 2 * 4
+    float temp_out[4]; // 2 * 2
+#pragma omp parallel for collapse(2) private(mm, temp_out, tmp_m)
     for (int n = 0; n < N; ++n) {
         for (int k = 0; k < K; ++k) {
-            float *mm = (float *)malloc(outHeight / 2 * outWidth / 2 * 16 * sizeof(float));
-            float *tmp_m = (float *)malloc(outHeight / 2 * outWidth / 2 * 8 * sizeof(float));
-            float *temp_out = (float *)malloc(outHeight / 2 * outWidth / 2 * 4 * sizeof(float));
-            for (long xi = 0; xi < 4; ++xi) {
-                for (long nu = 0; nu < 4; ++nu) {
-                    for (int y = 0; y < outHeight / 2; ++y) {
-                        for (int x = 0; x < outWidth / 2; ++x) {
-                            int b = (n * outHeight / 2 + y) * outWidth / 2 + x;
-                            mm[(y * outWidth / 2 + x) * 16 + xi * 4 + nu] = M[((xi * 4 + nu) * K + k) * P + b];
-                        }
-                    }
-                }
-            }
             for (int y = 0; y < outHeight / 2; ++y) {
                 for (int x = 0; x < outWidth / 2; ++x) {
-                    sgemm(&A_T[0][0], &mm[(y * outWidth / 2 + x) * 16], &tmp_m[(y * outWidth / 2 + x) * 8], 2, 4, 4);
-                    sgemm(&tmp_m[(y * outWidth / 2 + x) * 8], &A[0][0], &temp_out[(y * outWidth / 2 + x) * 4], 2, 4, 2);
+                    int b = (n * outHeight / 2 + y) * outWidth / 2 + x;
+                    for (long xi = 0; xi < 4; ++xi) {
+                        for (long nu = 0; nu < 4; ++nu) {
+                            mm[xi * 4 + nu] = M[((xi * 4 + nu) * K + k) * P + b];
+                        }
+                    }
+                    sgemm(&A_T[0][0], mm, tmp_m, 2, 4, 4);
+                    sgemm(tmp_m, &A[0][0], temp_out, 2, 4, 2);
                     for (int i = 0; i < 2; ++i) {
                         for (int j = 0; j < 2; ++j) {
-                            out[((long)(n * K + k) * outHeight + y * 2 + i) * outWidth + x * 2 +
-                                j] = temp_out[(y * outWidth / 2 + x) * 4 + i * 2 + j];
+                            out[(long)((n * K + k) * outHeight + y * 2 + i) * outWidth + x * 2 +
+                                j] = temp_out[i * 2 + j];
                         }
                     }
                 }
             }
-            free(mm);
-            free(tmp_m);
-            free(temp_out);
         }
     }
 }
