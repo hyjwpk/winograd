@@ -29,6 +29,9 @@ void sgemm(const float *A, const float *B, float *out, const int M, const int K,
 void sgemm_parallel(const float *A, const float *B, float *out, const int M, const int K, const int N) {
     memset(out, 0, M * N * sizeof(float));
     int s = 256;
+    if (((M + s - 1) / s) * ((N + s - 1) / s) < 160) {
+        s = 32;
+    }
 #pragma omp parallel for collapse(2)
     for (int ih = 0; ih < M; ih += s) {
         for (int jh = 0; jh < N; jh += s) {
